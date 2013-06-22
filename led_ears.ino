@@ -1,9 +1,11 @@
 // Fox Ears sketch rewrite v2
 #include <Adafruit_NeoPixel.h>
 #include <avr/pgmspace.h>
+#include <EEPROM.h>
 #include "utilities.h"
 
 // default settings for different people:
+// note these aren't used anymore - legacy stuff TODO: REMOVE THIS after fixing gradient edge animation
 #define HueDefaultBluebie 85
 #define HueDefaultDresona 42
 #define HueDefault HueDefaultBluebie
@@ -16,6 +18,8 @@
 
 #define PrimaryButton 5
 #define SecondaryButton 1
+
+#define NumPrograms (sizeof(programs) / sizeof(PGM_P))
 
 // library used to communcate to these LED pixels in the loop function:
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(6, 0, NEO_RGB + NEO_KHZ800);
@@ -45,9 +49,14 @@ RGBPixel primary_color;
 byte primary_color_hue = HueDefault;
 
 void setup() {
+  pinMode(5, INPUT);
+  pinMode(1, INPUT);
   // set our two input buttons high
   digitalWrite(5, HIGH);
   digitalWrite(1, HIGH);
+  
+  primary_color_hue = EEPROM.read(0);
+  selected_program_idx = EEPROM.read(1) % NumPrograms;
   
   pixels.begin();
 }
@@ -57,6 +66,8 @@ void loop() {
   unsigned long time = millis();
   
   primary_color = color_wheel(primary_color_hue);
+  
+  update_eeprom();
   
   // detect when button is pressed down
   handle_primary_button(time);
@@ -80,14 +91,25 @@ void loop() {
   pixels.show();
 }
 
+#define EEPROMUpdateInterval 500
+void update_eeprom(void) {
+  static unsigned long update_clock;
+  unsigned long time = millis();
+  if ((time - update_clock) > EEPROMUpdateInterval) {
+    if (EEPROM.read(0) != primary_color_hue) EEPROM.write(0, primary_color_hue);
+    if (EEPROM.read(1) != selected_program_idx) EEPROM.write(1, selected_program_idx);
+    update_clock = time;
+  }
+}
+
 void handle_primary_button(byte time) {
   Debounce(time, digitalRead(PrimaryButton));
   static boolean recharged;
   
   if (!digitalRead(PrimaryButton)) {
     if (recharged) {
-      selected_program_idx += 1;
-      if (selected_program_idx >= (sizeof(programs) / sizeof(PGM_P))) selected_program_idx = 0;
+      selected_program_idx = (selected_program_idx + 1) % NumPrograms;
+      //if (selected_program_idx >= NumPrograms) selected_program_idx = 0;
       indicate(color_wheel(HueDefault)); //RGB(255, 255, 255));
       recharged = false;
     }
