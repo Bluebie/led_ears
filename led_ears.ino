@@ -7,6 +7,7 @@
 #define HueDefaultBluebie 85
 #define HueDefaultDresona 42
 #define HueDefault HueDefaultBluebie
+#define GradientEdgeDefaultHue 185
 // note that hues range from blue at 0, through to purple, red, orange, green, aqua, blue again at 255
 
 // constants used to identify different groups of pixels
@@ -17,26 +18,20 @@
 #define SecondaryButton 1
 
 // library used to communcate to these LED pixels in the loop function:
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(6, 0, NEO_RGB + NEO_KHZ400);
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(6, 0, NEO_RGB + NEO_KHZ800);
 // currently selected program:
-byte selected_animation_idx = 0;
+byte selected_program_idx = 0;
 // list of available programs
-PGM_P animations[] PROGMEM = {
+PGM_P programs[] PROGMEM = {
   (PGM_P) solid,
   (PGM_P) edge,
   (PGM_P) inner,
-  (PGM_P) heartbeat,
   (PGM_P) gradient_edge,
   (PGM_P) opposites,
   (PGM_P) rainbow_opposites,
-  (PGM_P) white,
   (PGM_P) strobe,
   (PGM_P) alternating_strobe,
-  (PGM_P) bicolor_strobe,
-  (PGM_P) forest_walk,
-  (PGM_P) random_walk,
-  (PGM_P) wave,
-  (PGM_P) oceanic,
+  (PGM_P) bicolor_strobe
 };
 
 struct pixel_request {
@@ -44,8 +39,6 @@ struct pixel_request {
   byte kind;
   byte height;
 };
-
-byte light_heights[] PROGMEM = {20, 0, 10, 10, 0, 20};
 
 // some state stuff
 RGBPixel primary_color;
@@ -73,16 +66,14 @@ void loop() {
   //RGBPixel (*program_function)(unsigned long time, byte pixel_idx, byte pixel_kind)
   //  = (RGBPixel(*)(unsigned long, byte, byte)) pgm_read_word(programs + selected_program_idx);
   RGBPixel (*program_function)(struct pixel_request, unsigned long)
-    = (RGBPixel(*)(struct pixel_request, unsigned long)) pgm_read_word(animations + selected_animation_idx);
+    = (RGBPixel(*)(struct pixel_request, unsigned long)) pgm_read_word(programs + selected_program_idx);
   
   // ask function for colours of all our LEDs
   struct pixel_request pixel; // variable to store our requests
   for (pixel.idx = 0; pixel.idx < pixels.numPixels(); pixel.idx++) {
     pixel.kind = (pixel.idx == 2 || pixel.idx == 3) ? EarsInner : EarsEdge;
-    //pixel.height = pixel.idx < 3 ? pixel.idx * 10 : 50 - (pixel.idx * 10);
-    pixel.height = pgm_read_byte(&light_heights[pixel.idx]);
     RGBPixel color = program_function(pixel, time);
-    if (color != CURRENT_COLOR) pixels.setPixelColor(pixel.idx, color);
+    pixels.setPixelColor(pixel.idx, color);
   }
   
   // send new colours to LEDs
@@ -95,8 +86,8 @@ void handle_primary_button(byte time) {
   
   if (!digitalRead(PrimaryButton)) {
     if (recharged) {
-      selected_animation_idx += 1;
-      if (selected_animation_idx >= (sizeof(animations) / sizeof(PGM_P))) selected_animation_idx = 0;
+      selected_program_idx += 1;
+      if (selected_program_idx >= (sizeof(programs) / sizeof(PGM_P))) selected_program_idx = 0;
       indicate(color_wheel(HueDefault)); //RGB(255, 255, 255));
       recharged = false;
     }

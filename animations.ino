@@ -59,7 +59,10 @@ RGBPixel heartbeat(struct pixel_request pixel, unsigned long time) {
 //RGBPixel gradient_edge(unsigned long time, byte pixel_idx, byte pixel_kind) {
 RGBPixel gradient_edge(struct pixel_request pixel, unsigned long time) {
   if (pixel.kind == EarsEdge) {
-    return pixel.idx % 2 == 0 ? primary_color : color_wheel(primary_color_hue + 60);
+    if (pixel.idx %2 == 0)
+         return color_wheel((primary_color_hue - HueDefault) + GradientEdgeDefaultHue);
+    else return color_wheel((primary_color_hue - HueDefault) + GradientEdgeDefaultHue + 60);
+    //return pixel.idx % 2 == 0 ? primary_color : color_wheel(primary_color_hue + 60);
   } else {
     return BLACK;
   }
