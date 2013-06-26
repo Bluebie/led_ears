@@ -33,15 +33,21 @@ PGM_P programs[] PROGMEM = {
   (PGM_P) gradient_edge,
   (PGM_P) opposites,
   (PGM_P) rainbow_opposites,
+  (PGM_P) wave,
   (PGM_P) strobe,
   (PGM_P) alternating_strobe,
-  (PGM_P) bicolor_strobe
+  (PGM_P) bicolor_strobe,
+  (PGM_P) forest_walk,
+  (PGM_P) random_walk,
 };
+
+byte height_lookup[] = {0, 2, 1, 1, 2, 0};
 
 struct pixel_request {
   byte idx;
   byte kind;
   byte height;
+  byte length;
 };
 
 // some state stuff
@@ -81,10 +87,12 @@ void loop() {
   
   // ask function for colours of all our LEDs
   struct pixel_request pixel; // variable to store our requests
-  for (pixel.idx = 0; pixel.idx < pixels.numPixels(); pixel.idx++) {
+  pixel.length = pixels.numPixels();
+  for (pixel.idx = 0; pixel.idx < pixel.length; pixel.idx++) {
     pixel.kind = (pixel.idx == 2 || pixel.idx == 3) ? EarsInner : EarsEdge;
+    pixel.height = height_lookup[pixel.idx];
     RGBPixel color = program_function(pixel, time);
-    pixels.setPixelColor(pixel.idx, color);
+    if (color != CURRENT_COLOR) pixels.setPixelColor(pixel.idx, color);
   }
   
   // send new colours to LEDs

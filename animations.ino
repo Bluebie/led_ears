@@ -8,6 +8,7 @@
 //   pixel.kind   -> Either EarsInner or EarsEdge, depending on the function of this LED aethetically
 //   pixel.height -> A numeric index of how high up this pixel's light shines primarily when seen
 //                   by a regular observer
+//   pixel.length -> Total number of pixels. pixel.idx will always be lower than this number.
 //   
 // More properties and kinds maybe added in the future
 // Your function may also optionally return CURRENT_COLOR in place of an actual RGBPixel color.
@@ -60,9 +61,8 @@ RGBPixel heartbeat(struct pixel_request pixel, unsigned long time) {
 RGBPixel gradient_edge(struct pixel_request pixel, unsigned long time) {
   if (pixel.kind == EarsEdge) {
     if (pixel.idx %2 == 0)
-         return color_wheel((primary_color_hue - HueDefault) + GradientEdgeDefaultHue);
+      return color_wheel((primary_color_hue - HueDefault) + GradientEdgeDefaultHue);
     else return color_wheel((primary_color_hue - HueDefault) + GradientEdgeDefaultHue + 60);
-    //return pixel.idx % 2 == 0 ? primary_color : color_wheel(primary_color_hue + 60);
   } else {
     return BLACK;
   }
@@ -83,20 +83,19 @@ RGBPixel white(struct pixel_request pixel, unsigned long time) {
 
 #define WaveDuration 350
 #define WavesTotalDuration 1500
-#define WaveOffset 21 /* in hundredths of seconds, unusually */
+#define WaveOffset 210 /* in hundredths of seconds, unusually */
 RGBPixel wave(struct pixel_request pixel, unsigned long time) {
   // triangle wave pulse one pixel at a start time for a duration
-//void wave_light(byte pixel_id, RGBPixel color, unsigned long start_time, unsigned long duration) {
   unsigned long start_time = (time - (time % WavesTotalDuration)) + (WaveOffset * pixel.height);
   long relative_time = time - start_time;
   relative_time *= 256;
   relative_time /= WaveDuration;
-  
+
   byte intensity = 0;
   if (relative_time >= 0 && relative_time <= 511) {
     intensity = lookup_sine(relative_time / 2);
   }
-  
+
   // multiply primary colour with intensity to do fade
   return multiply_colors(primary_color, GRAY(intensity));
 }
@@ -125,7 +124,7 @@ RGBPixel alternating_strobe(struct pixel_request pixel, unsigned long time) {
   if ((pixel.kind == EarsEdge) ? toggle : !toggle) {
     return primary_color;
   }
-  
+
   return BLACK;
 }
 
@@ -140,14 +139,14 @@ RGBPixel bicolor_strobe(struct pixel_request pixel, unsigned long time) {
 
 // calculate forest walk colors
 RGBPixel forest_walk(struct pixel_request pixel, unsigned long time) {
-  unsigned int step = (time / 3) + (pixel.height * 2);
+  unsigned int step = (time / 3) + (pixel.height * 20);
   unsigned int green = perlin(step) + 70;
-  
+
   byte lightness = green / 4;
   lightness += green > 255 ? green - 255 : 0;
   green -= green > 255 ? green - 255 : 0;
   signed char color_wiggler = (lookup_sine((step % 1024) / 4) / 8) - 16;
-  
+
   RGBPixel output_hue = color_wheel(primary_color_hue + color_wiggler);
   RGBPixel output_lightness = GRAY(lightness);
   RGBPixel output_saturation = GRAY(green);
@@ -155,21 +154,14 @@ RGBPixel forest_walk(struct pixel_request pixel, unsigned long time) {
 }
 
 #define RandomWalkerInterval 64 /* milliseconds */
-RGBPixel random_walk(struct pixel_request pixel, unsigned long time) {
-  RGBPixel color = color_wheel(sp_random(time / RandomWalkerInterval));
-  byte target_pixel = sp_random(time / RandomWalkerInterval + 1000) % pixels.numPixels();
-  if (target_pixel == pixel.idx) {
-    return color;
-  }
-  return CURRENT_COLOR;
+RGBPixel random_walk(struct pixel_request pixel, unsigned long long_time) {
+  byte pixel_idx = sp_random(1024 + (long_time / RandomWalkerInterval)) % pixel.length;
+  RGBPixel color = color_wheel(sp_random(long_time / RandomWalkerInterval) % 256);
   
-  /*static unsigned int prev_time;
-  if (prev_time + RANDOM_WALKER_WAIT < time || time < prev_time) {
-    prev_time = current_time;
-    
-    byte target_pixel = rand() % headband.numPixels();
-    RGBPixel color = color_wheel(rand());
-    headband.setPixelColor(target_pixel, color);
-  } */
+  if (pixel_idx == pixel.idx) {
+    return color;
+  } else {
+    return CURRENT_COLOR;
+  }
 }
 
